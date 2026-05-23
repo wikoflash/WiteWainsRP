@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RDR2 RP — Crafting Calculator</title>
+  <style>
+    :root {
+      --bg:          #100e08;
+      --bg-card:     #1c160d;
+      --bg-section:  #221a0e;
+      --border:      #5c4220;
+      --border-gold: #b8892a;
+      --text:        #e0c98a;
+      --text-dim:    #8a6f3e;
+      --text-bright: #f2e2b0;
+      --accent:      #c9a227;
+      --green:       #4caf6a;
+      --red:         #c0392b;
+      --font:        Georgia, 'Times New Roman', serif;
+      --mono:        'Courier New', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────── */
+    header {
+      background: var(--bg-section);
+      border-bottom: 2px solid var(--border-gold);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .header-title {
+      font-size: 1.5rem;
+      color: var(--accent);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .header-sub {
+      font-size: .75rem;
+      color: var(--text-dim);
+      letter-spacing: .08em;
+      margin-top: 2px;
+    }
+
+    .btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 7px 16px;
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: .8rem;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      transition: border-color .2s, color .2s;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Layout ─────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      min-height: calc(100vh - 62px);
+    }
+
+    .main-panel {
+      padding: 22px 24px;
+      overflow-y: auto;
+    }
+
+    .side-panel {
+      background: var(--bg-section);
+      border-left: 1px solid var(--border);
+      padding: 20px 18px;
+      overflow-y: auto;
+      position: sticky;
+      top: 0;
+      height: calc(100vh - 62px);
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    /* ── Category ───────────────────────────────── */
+    .category { margin-bottom: 26px; }
+
+    .cat-label {
+      font-size: .7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 7px;
+      margin-bottom: 11px;
+    }
+
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 8px;
+    }
+
+    /* ── Item card ──────────────────────────────── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: border-color .2s;
+    }
+    .card.active { border-color: var(--accent); }
+
+    .card-name {
+      font-size: .88rem;
+      color: var(--text);
+      line-height: 1.3;
+      flex: 1;
+    }
+
+    /* ── Quantity control ───────────────────────── */
+    .qty {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    .qty-btn {
+      background: var(--bg-section);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 24px; height: 24px;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s, color .15s;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .qty-btn:hover { background: var(--border); color: var(--accent); }
+
+    .qty-input {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-bright);
+      text-align: center;
+      width: 38px; height: 24px;
+      font-family: var(--mono);
+      font-size: .84rem;
+      padding: 0;
+    }
+    .qty-input:focus { outline: none; border-color: var(--accent); }
+    .qty-input::-webkit-inner-spin-button,
+    .qty-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .qty-input { -moz-appearance: textfield; }
+
+    /* ── Side section title ─────────────────────── */
+    .side-title {
+      font-size: .7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 7px;
+      margin-bottom: 12px;
+    }
+
+    /* ── Resource rows ──────────────────────────── */
+    .res-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(92,66,32,.35);
+      gap: 8px;
+    }
+    .res-row:last-child { border-bottom: none; }
+
+    .res-name { font-size: .84rem; color: var(--text-dim); }
+    .res-val  { font-family: var(--mono); font-size: .9rem; color: var(--text-bright); font-weight: bold; min-width: 28px; text-align: right; }
+    .res-val.zero { color: var(--border); }
+
+    .derived-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 3px 0 3px 14px;
+    }
+    .derived-row .res-name { font-size: .76rem; color: rgba(92,66,32,.8); }
+    .derived-row .res-val  { font-size: .76rem; color: var(--text-dim); }
+
+    .empty-msg {
+      color: var(--border);
+      font-size: .82rem;
+      font-style: italic;
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    /* ── Inventory ──────────────────────────────── */
+    .inv-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 0;
+    }
+
+    .inv-label { font-size: .81rem; color: var(--text-dim); flex: 1; }
+
+    .inv-input {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-bright);
+      text-align: right;
+      width: 50px; height: 22px;
+      font-family: var(--mono);
+      font-size: .78rem;
+      padding: 0 4px;
+    }
+    .inv-input:focus { outline: none; border-color: var(--accent); }
+    .inv-input::-webkit-inner-spin-button,
+    .inv-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .inv-input { -moz-appearance: textfield; }
+
+    .inv-badge {
+      font-family: var(--mono);
+      font-size: .74rem;
+      min-width: 52px;
+      text-align: right;
+    }
+    .inv-badge.ok      { color: var(--green); }
+    .inv-badge.short   { color: var(--red); }
+    .inv-badge.neutral { color: var(--border); }
+
+    /* ── Responsive ─────────────────────────────── */
+    @media (max-width: 740px) {
+      .layout { grid-template-columns: 1fr; }
+      .side-panel { position: static; height: auto; border-left: none; border-top: 1px solid var(--border); }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="header-title">Crafting Calculator</div>
+    <div class="header-sub">Red Dead Redemption 2 — RP</div>
+  </div>
+  <button class="btn" onclick="clearAll()">Clear All</button>
+</header>
+
+<div class="layout">
+  <div class="main-panel" id="mainPanel"></div>
+  <div class="side-panel">
+    <div>
+      <div class="side-title">Resources Needed</div>
+      <div id="totalsPanel"><div class="empty-msg">Set quantities to calculate</div></div>
+    </div>
+    <div>
+      <div class="side-title">Your Inventory</div>
+      <div id="inventoryPanel"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ────────────────────────────────────────────────────────────────────
+
+const RES_KEYS = ['iron','wood','sap','treeSap','goldbar','cloth','animalFat','gunPowder','rope'];
+
+const RES_LABEL = {
+  iron:      'Iron',
+  wood:      'Wood',
+  sap:       'Sap',
+  treeSap:   'Tree Sap',
+  goldbar:   'Gold Bar',
+  cloth:     'Cloth',
+  animalFat: 'Animal Fat',
+  gunPowder: 'Gun Powder',
+  rope:      'Rope',
+};
+
+const CATEGORIES = [
+  {
+    label: 'Rifles',
+    items: [
+      { id: 'springfield', name: 'Springfield Rifle',    res: { iron: 11, wood: 15, sap: 7,  treeSap: 3, goldbar: 1 } },
+      { id: 'boltaction',  name: 'Bolt Action Rifle',    res: { iron: 11, wood: 15, sap: 8,  treeSap: 4, goldbar: 1 } },
+      { id: 'elephant',    name: 'Elephant Rifle',        res: { iron: 8,  wood: 15, sap: 8,  treeSap: 5, goldbar: 2 } },
+    ]
+  },
+  {
+    label: 'Repeaters',
+    items: [
+      { id: 'winchester',  name: 'Winchester Repeater',  res: { iron: 4,  wood: 10, sap: 4,  treeSap: 3 } },
+    ]
+  },
+  {
+    label: 'Shotguns',
+    items: [
+      { id: 'pump',        name: 'Pump Shotgun',          res: { iron: 10, wood: 20, sap: 13, treeSap: 5, goldbar: 1 } },
+      { id: 'sawedoff',    name: 'Sawed-off Shotgun',     res: { iron: 10, wood: 20, sap: 11, treeSap: 3 } },
+    ]
+  },
+  {
+    label: 'Revolvers',
+    items: [
+      { id: 'lemat',       name: 'Lemat Revolver',        res: { iron: 10, wood: 7,  sap: 6,  treeSap: 3 } },
+    ]
+  },
+  {
+    label: 'Throwables',
+    items: [
+      { id: 'molotov',     name: 'Molotov',               res: { cloth: 2, animalFat: 5 } },
+      { id: 'dynamite',    name: 'Dynamite',               res: { gunPowder: 30, rope: 1, animalFat: 10 } },
+    ]
+  },
+  {
+    label: 'Ammunition — per unit',
+    items: [
+      { id: 'a_slug',      name: 'Shotgun Slug',           res: { iron: 2, gunPowder: 5 } },
+      { id: 'a_bexp',      name: 'Bolt Express',           res: { iron: 1, gunPowder: 7 } },
+      { id: 'a_split',     name: 'Split Point',            res: { iron: 3, gunPowder: 5 } },
+      { id: 'a_vel',       name: 'Velocity',               res: { iron: 2, gunPowder: 6 } },
+      { id: 'a_eleph',     name: 'Elephant Ammo',          res: { iron: 2, gunPowder: 5 } },
+      { id: 'a_dyn',       name: 'Dynamite Ammo',          res: { gunPowder: 10, animalFat: 10 } },
+      { id: 'a_rsplit',    name: 'Repeater Split Point',   res: { iron: 3, gunPowder: 3 } },
+      { id: 'a_rexp',      name: 'Repeater Express',       res: { iron: 1, gunPowder: 6 } },
+    ]
+  },
+];
+
+// ── STATE ───────────────────────────────────────────────────────────────────
+
+const qty = {};
+const inv = {};
+CATEGORIES.forEach(c => c.items.forEach(i => { qty[i.id] = 0; }));
+RES_KEYS.forEach(r => { inv[r] = ''; });
+
+// ── RENDER ──────────────────────────────────────────────────────────────────
+
+function renderMain() {
+  document.getElementById('mainPanel').innerHTML = CATEGORIES.map(cat => `
+    <div class="category">
+      <div class="cat-label">${cat.label}</div>
+      <div class="items-grid">
+        ${cat.items.map(item => `
+          <div class="card" id="card-${item.id}">
+            <div class="card-name">${item.name}</div>
+            <div class="qty">
+              <button class="qty-btn" onclick="adjust('${item.id}',-1)">−</button>
+              <input class="qty-input" type="number" min="0" max="999"
+                id="qty-${item.id}" value="0"
+                oninput="setQty('${item.id}',this.value)"
+              >
+              <button class="qty-btn" onclick="adjust('${item.id}',+1)">+</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderInventory() {
+  document.getElementById('inventoryPanel').innerHTML = RES_KEYS.map(r => `
+    <div class="inv-row">
+      <span class="inv-label">${RES_LABEL[r]}</span>
+      <input class="inv-input" type="number" min="0" id="inv-${r}"
+        placeholder="—" oninput="setInv('${r}',this.value)">
+      <span class="inv-badge neutral" id="badge-${r}">—</span>
+    </div>
+  `).join('');
+}
+
+// ── CALCULATE & UPDATE ───────────────────────────────────────────────────────
+
+function calcTotals() {
+  const t = {};
+  RES_KEYS.forEach(r => { t[r] = 0; });
+  CATEGORIES.forEach(cat =>
+    cat.items.forEach(item => {
+      const q = qty[item.id] || 0;
+      if (!q) return;
+      Object.entries(item.res).forEach(([r, v]) => { t[r] = (t[r] || 0) + q * v; });
+    })
+  );
+  return t;
+}
+
+function refreshTotals() {
+  const t = calcTotals();
+  const hasAny = RES_KEYS.some(r => t[r] > 0);
+  const panel = document.getElementById('totalsPanel');
+
+  if (!hasAny) {
+    panel.innerHTML = '<div class="empty-msg">Set quantities to calculate</div>';
+    RES_KEYS.forEach(r => setBadge(r, 0));
+    return;
+  }
+
+  panel.innerHTML = RES_KEYS.map(r => {
+    if (!t[r]) return '';
+    const isGP = r === 'gunPowder';
+    return `
+      <div class="res-row">
+        <span class="res-name">${RES_LABEL[r]}</span>
+        <span class="res-val">${t[r]}</span>
+      </div>
+      ${isGP ? `
+        <div class="derived-row">
+          <span class="res-name">↳ Coal</span>
+          <span class="res-val">${t[r]}</span>
+        </div>
+        <div class="derived-row">
+          <span class="res-name">↳ Sulfur</span>
+          <span class="res-val">${t[r]}</span>
+        </div>` : ''}
+    `;
+  }).join('');
+
+  RES_KEYS.forEach(r => setBadge(r, t[r]));
+}
+
+function setBadge(r, need) {
+  const el = document.getElementById(`badge-${r}`);
+  if (!el) return;
+  const have = parseInt(inv[r], 10);
+  if (isNaN(have) || need === 0) {
+    el.textContent = '—'; el.className = 'inv-badge neutral';
+  } else if (have >= need) {
+    el.textContent = `+${have - need}`; el.className = 'inv-badge ok';
+  } else {
+    el.textContent = `−${need - have}`; el.className = 'inv-badge short';
+  }
+}
+
+// ── ACTIONS ─────────────────────────────────────────────────────────────────
+
+function adjust(id, delta) {
+  qty[id] = Math.max(0, (qty[id] || 0) + delta);
+  const el = document.getElementById(`qty-${id}`);
+  if (el) el.value = qty[id];
+  syncCard(id);
+  refreshTotals();
+}
+
+function setQty(id, val) {
+  qty[id] = Math.max(0, parseInt(val, 10) || 0);
+  syncCard(id);
+  refreshTotals();
+}
+
+function setInv(r, val) {
+  inv[r] = val;
+  refreshTotals();
+}
+
+function syncCard(id) {
+  const c = document.getElementById(`card-${id}`);
+  if (c) c.classList.toggle('active', qty[id] > 0);
+}
+
+function clearAll() {
+  Object.keys(qty).forEach(id => {
+    qty[id] = 0;
+    const el = document.getElementById(`qty-${id}`);
+    if (el) el.value = 0;
+    syncCard(id);
+  });
+  refreshTotals();
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+
+renderMain();
+renderInventory();
+refreshTotals();
+</script>
+</body>
+</html>
